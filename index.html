@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Web Học Tập – Thi Trực Tuyến</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+body{font-family:Arial;background:#f2f4f8;margin:0}
+header{background:#34495e;color:white;padding:15px;text-align:center}
+section{padding:20px}
+.card{background:white;padding:15px;border-radius:8px;margin-bottom:15px}
+button{padding:8px 12px;margin-top:5px}
+.hidden{display:none}
+.admin{color:red;font-weight:bold}
+table{width:100%;border-collapse:collapse}
+td,th{border:1px solid #ccc;padding:6px}
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>🎓 HỆ THỐNG THI & HỌC TẬP</h2>
+<span id="info"></span>
+</header>
+
+<section id="login">
+<div class="card">
+<h3>Đăng nhập</h3>
+<input id="username" placeholder="Tên"><br><br>
+<select id="role">
+<option value="user">Học sinh</option>
+<option value="admin">Giáo viên</option>
+</select><br><br>
+<button onclick="login()">Đăng nhập</button>
+</div>
+</section>
+
+<section id="userDash" class="hidden">
+<div class="card">
+<h3>📤 Upload đề (Word/PDF)</h3>
+<input type="file" onchange="uploadExam(this)">
+<p id="uploadStatus"></p>
+</div>
+
+<div class="card">
+<h3>📝 Thi trắc nghiệm</h3>
+<p id="q"></p>
+<div id="opts"></div>
+<button onclick="submit()">Nộp</button>
+</div>
+
+<div class="card">
+<h3>📄 Xuất bảng điểm</h3>
+<button onclick="exportPDF()">Xuất PDF</button>
+</div>
+</section>
+
+<section id="adminDash" class="hidden">
+<div class="card admin">
+<h3>🛡️ Log gian lận</h3>
+<ul id="logs"></ul>
+</div>
+
+<div class="card">
+<h3>🧠 AI đánh giá gian lận</h3>
+<table>
+<tr><th>Tên</th><th>Điểm nghi vấn</th><th>Kết luận</th></tr>
+<tbody id="aiTable"></tbody>
+</table>
+</div>
+</section>
+
+<script>
+let user=null,score=0,aiScore=0,startTime=Date.now()
+let bank=[{q:"1+1=?",a:["1","2","3","4"],c:1}]
+let curQ=null
+
+function login(){
+  user={name:username.value,role:role.value}
+  login.classList.add("hidden")
+  if(user.role==="user") userDash.classList.remove("hidden")
+  else adminDash.classList.remove("hidden")
+  info.innerText=user.role==="admin"?"👑 Admin":"🎓 User"
+  loadQ()
+}
+
+function uploadExam(input){
+  uploadStatus.innerText="📄 Đã nhận file (mô phỏng đọc Word/PDF)"
+}
+
+function loadQ(){
+  curQ=bank[Math.floor(Math.random()*bank.length)]
+  q.innerText=curQ.q
+  opts.innerHTML=""
+  curQ.a
+    .map((v,i)=>({v,i}))
+    .sort(()=>Math.random()-0.5)
+    .forEach(x=>{
+      opts.innerHTML+=`<div><input type="radio" name="o" value="${x.i}"> ${x.v}</div>`
+    })
+}
+
+function submit(){
+  const c=document.querySelector("input[name=o]:checked")
+  if(!c) return
+  if(+c.value===curQ.c) score+=10
+  let time=Date.now()-startTime
+  if(time<3000) aiScore+=25
+  loadQ()
+}
+
+function logCheat(reason,point){
+  aiScore+=point
+  logs.innerHTML+=`<li>${user.name}: ${reason} (+${point})</li>`
+}
+
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden) logCheat("Thoát tab",30)
+})
+document.addEventListener("copy",()=>logCheat("Copy",20))
+document.addEventListener("paste",()=>logCheat("Paste",20))
+window.addEventListener("resize",()=>logCheat("Resize",15))
+
+function exportPDF(){
+  const {jsPDF}=window.jspdf
+  let pdf=new jsPDF()
+  pdf.text(`BẢNG ĐIỂM`,20,20)
+  pdf.text(`Tên: ${user.name}`,20,30)
+  pdf.text(`Điểm: ${score}`,20,40)
+  pdf.text(`AI gian lận: ${aiScore}`,20,50)
+  pdf.save("bang_diem.pdf")
+}
+
+// Admin AI Table
+setInterval(()=>{
+  if(user?.role==="admin"){
+    aiTable.innerHTML=`<tr>
+      <td>Học sinh A</td>
+      <td>${aiScore}</td>
+      <td>${aiScore>=60?"⚠️ Gian lận":"✔ Bình thường"}</td>
+    </tr>`
+  }
+},1000)
+</script>
+
+</body>
+</html>
